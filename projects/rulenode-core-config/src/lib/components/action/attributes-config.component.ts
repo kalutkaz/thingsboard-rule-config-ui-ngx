@@ -1,21 +1,24 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { AppState } from '@core/public-api';
 import { AttributeScope, RuleNodeConfiguration, RuleNodeConfigurationComponent, telemetryTypeTranslations } from '@shared/public-api';
 import { Store } from '@ngrx/store';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { takeUntil } from 'rxjs/operators';
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'tb-action-node-attributes-config',
   templateUrl: './attributes-config.component.html',
   styleUrls: []
 })
-export class AttributesConfigComponent extends RuleNodeConfigurationComponent {
-
-  attributeScopeMap = AttributeScope;
-  attributeScopes = Object.keys(AttributeScope);
-  telemetryTypeTranslationsMap = telemetryTypeTranslations;
+export class AttributesConfigComponent extends RuleNodeConfigurationComponent implements OnDestroy{
 
   attributesConfigForm: FormGroup;
+
+  AttributeScope = AttributeScope;
+  attributeScopes = Object.keys(AttributeScope);
+  telemetryTypeTranslationsMap = telemetryTypeTranslations;
+  private destroy$ = new Subject();
 
   constructor(protected store: Store<AppState>,
               private fb: FormBuilder) {
@@ -33,7 +36,7 @@ export class AttributesConfigComponent extends RuleNodeConfigurationComponent {
       sendAttributesUpdatedNotification: [configuration ? configuration.sendAttributesUpdatedNotification : false, []]
     });
 
-    this.attributesConfigForm.get('scope').valueChanges.subscribe((value) => {
+    this.attributesConfigForm.get('scope').valueChanges.pipe(takeUntil(this.destroy$)).subscribe((value) => {
       if (value !== AttributeScope.SHARED_SCOPE) {
         this.attributesConfigForm.get('notifyDevice').patchValue(false, {emitEvent: false});
       }
@@ -43,4 +46,8 @@ export class AttributesConfigComponent extends RuleNodeConfigurationComponent {
     });
   }
 
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 }

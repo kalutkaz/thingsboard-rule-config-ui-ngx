@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, OnDestroy, ViewChild } from '@angular/core';
 import { AppState } from '@core/public-api';
 import {
   AttributeScope,
@@ -9,20 +9,24 @@ import { Store } from '@ngrx/store';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatChipInputEvent, MatChipList } from '@angular/material/chips';
 import { COMMA, ENTER, SEMICOLON } from '@angular/cdk/keycodes';
+import { takeUntil } from 'rxjs/operators';
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'tb-action-node-delete-attributes-config',
   templateUrl: './delete-attributes-config.component.html',
   styleUrls: []
 })
-export class DeleteAttributesConfigComponent extends RuleNodeConfigurationComponent {
+export class DeleteAttributesConfigComponent extends RuleNodeConfigurationComponent implements OnDestroy{
   @ViewChild('attributeChipList') attributeChipList: MatChipList;
 
   deleteAttributesConfigForm: FormGroup;
-  attributeScopeMap = AttributeScope;
+
+  AttributeScope = AttributeScope;
   attributeScopes = Object.keys(AttributeScope);
   telemetryTypeTranslationsMap = telemetryTypeTranslations;
   separatorKeysCodes = [ENTER, COMMA, SEMICOLON];
+  private destroy$ = new Subject();
 
   constructor(protected store: Store<AppState>,
               private fb: FormBuilder) {
@@ -41,7 +45,7 @@ export class DeleteAttributesConfigComponent extends RuleNodeConfigurationCompon
       notifyDevice: [configuration ? configuration.notifyDevice : false, []]
     });
 
-    this.deleteAttributesConfigForm.get('scope').valueChanges.subscribe((value) => {
+    this.deleteAttributesConfigForm.get('scope').valueChanges.pipe(takeUntil(this.destroy$)).subscribe((value) => {
       if (value !== AttributeScope.SHARED_SCOPE) {
         this.deleteAttributesConfigForm.get('notifyDevice').patchValue(false, {emitEvent: false});
       }
@@ -74,5 +78,10 @@ export class DeleteAttributesConfigComponent extends RuleNodeConfigurationCompon
     if (input) {
       input.value = '';
     }
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }
